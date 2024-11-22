@@ -631,10 +631,8 @@ eeb2                    WriteMem equ    $EEB2   ; FAR call
                         ; Author:       D. Haley
                         ; Date          24 May 2024
                         ;
-                        ; Modified by:  Egor Vovk               S/N: 041081020
-                        ;               John Rycca Belcina      S/N: 041128039
-                        ;               Taeyoung You            S/N: 041079981
-                        ; Date:         11/16/2024
+                        ; Modified by:  < your Student Name(s) and Number(s) go here >
+                        ; Date:         < completion date goes here >
                         ;
                         ; Purpose       Up/Down Count BCD Counter $00 - $99 (BCD) using Hex Displays
                         ;               and a single register, Accumulator A, for the count
@@ -698,8 +696,8 @@ eeb2                    WriteMem equ    $EEB2   ; FAR call
                         ;
                         ;
                         ; ***** DO NOT CHANGE ANY CODE BETWEEN THESE MARKERS *****
-                        ; Include asm files
-                        #include        API_Config.asm
+                        
+                        #include        API_Config.txt
                         ; API_Config.txt
                         ; Author: D. Haley, Professor 31 July 2024
                         ;
@@ -728,6 +726,7 @@ eeb2                    WriteMem equ    $EEB2   ; FAR call
                         #endinclude
 
                         
+                        ; Program Constants
 2000                    STACK           equ     $2000
                         
                         ; Port H SWITCHES
@@ -743,7 +742,6 @@ eeb2                    WriteMem equ    $EEB2   ; FAR call
                         
                         ; ***** END OF DO NOT CHANGE ANY CODE BETWEEN THESE MARKERS *****
                         
-                        ; /-------------------------------------------initialize constants and variables
                         ; Delay Subroutine Values
                         ; Could also be termed Switch Debounce value, as the switches MUST be debounced
 00fa                    DVALUE  equ     250                    ; Delay value (base 10) 0 - 255 ms
@@ -752,164 +750,94 @@ eeb2                    WriteMem equ    $EEB2   ; FAR call
                         ; Changing these values will change the Starting and Ending BCD counts
 0000                    FIRST_BCD       equ     $00     ; Starting BCD count ( < LAST_BCD )
 0099                    LAST_BCD        equ     $99     ; Ending BCD count   ( > FIRST_BCD )
+1000                                    org         $1000
+1000                    COUNT           ds          2
+2000                                    org         $2000               ; Program start location
+2000                    Start:
+2000 cf 20 00                           lds         #STACK              ; Initialize stack
+2003 16 23 17                           jsr         Config_HEX_Displays ; Configure Hex Displays
+2006                    CheckpointC:
+2006 86 00                              ldaa        #FIRST_BCD          ; Load initial BCD value
+2008 7a 10 00                           staa        COUNT               ; Initialize COUNT
+200b 20 00                              bra         CheckpointB         ; Start main loop
+200d                    CheckpointB:
+200d b6 10 00                           ldaa        COUNT               ; Load COUNT
+2010 36                                 psha
+2011 16 23 44                           jsr         Extract_MSB         ; Extract MSB
+2014 c6 0b                              ldab        #DIGIT1_PP2         ; Select MSB display
+2016 16 23 39                           jsr         Hex_Display         ; Display MSB
+2019 86 fa                              ldaa        #DVALUE
+201b 16 23 1f                           jsr         Delay_Ms            ; Delay
+                                        
+201e b6 10 00                           ldaa        COUNT               ; Reload COUNT
+2021 16 23 49                           jsr         Extract_LSB         ; Extract LSB
+2024 c6 07                              ldab        #DIGIT0_PP3         ; Select LSB display
+2026 16 23 39                           jsr         Hex_Display         ; Display LSB
+2029 86 fa                              ldaa        #DVALUE
+202b 16 23 1f                           jsr         Delay_Ms            ; Delay
+202e 20 00                              bra         CheckpointA         ; Check switch status
+2030                    CheckpointA:
+2030 b6 02 60                           ldaa        PTH                 ; Read Port H
+                                        ; Check if SW5 is pressed (only bit 0)
+2033 84 01                              anda        #%00000001          ; Isolate bit 0 (SW5)
+2035 27 09                              beq         CheckpointF         ; Branch to increment if SW5 is pressed
+                                        ; Check if SW4 is pressed (only bit 1)
+2037 b6 02 60                           ldaa        PTH                 ; Reload Port H to avoid incorrect masking
+203a 84 02                              anda        #%00000010          ; Isolate bit 1 (SW4)
+203c 27 1b                              beq         CheckpointD         ; Branch to decrement if SW4 is pressed
+203e 20 f0                              bra         CheckpointA         ; Handle abnormal conditions if neither is pressed
                         
-                        ; Display Value
-0001                    LSB_DISPLAY        equ     $01
-0002                    MSB_DISPLAY        equ     $02
+2040                    CheckpointF:
+2040 32                                 pula
+2041 42                                 inca                            ; Increment COUNT
+2042 36                                 psha
+2043 84 0f                              anda        #%00001111          ; Isolate LSB
+2045 81 0a                              cmpa        #%00001010          ; Check if invalid (>= 10)
+2047 25 0a                              blo         ValidIncrement      ; If valid, branch
+2049                    InvalidIncrement:
+2049 32                                 pula
+204a 84 f0                              anda        #%11110000
+204c 8b 10                              adda        #$10
+204e 7a 10 00                           staa        COUNT
+2051 20 28                              bra         CheckpointG_Increment
+2053                    ValidIncrement:
+2053 32                                 pula
+2054 7a 10 00                           staa        COUNT              		  ; Store updated COUNT
+2057 20 22                              bra         CheckpointG_Increment         ; Validate COUNT
+2059                    CheckpointD:
+2059 32                                 pula
+205a 43                                 deca
+205b 81 ff                              cmpa        #%11111111
+205d 27 15                              beq         OutOfRange
+                                        
+205f 36                 		psha
+2060 84 0f                              anda        #%00001111          ; Isolate LSB
+2062 81 0a                              cmpa        #%00001010          ; Check if invalid (F)
+2064 25 08                              blo         ValidDecrement      ; If valid, branch
+2066                    InvalidDecrement:
+2066 32                                 pula
+2067 80 06                              suba        #$06
+2069 7a 10 00                           staa        COUNT
+206c 20 9f                              bra         CheckpointB
+206e                    ValidDecrement:
+206e 32                                 pula
+206f 7a 10 00                           staa        COUNT              	       	  ; Store updated COUNT
+2072 20 99                              bra         CheckpointB		          ; Validate COUNT
+2074                    OutOfRange:
+2074 86 99                              ldaa        #LAST_BCD
+2076 7a 10 00                           staa        COUNT
+2079 20 92                              bra         CheckpointB
+                                        
+207b                    CheckpointG_Increment:
+207b b6 10 00                           ldaa        COUNT               ; Load COUNT
+207e 81 99                              cmpa        #LAST_BCD           ; Compare with LAST_BCD
+2080 23 8b                              bls         CheckpointB         ; If <= LAST_BCD, loop to display
+2082 20 82                              bra         CheckpointC         ; Loop to display
                         
-                        ; Variable for Count
-0000                    Count           ds      2
-                        
-2000                            org     $2000           ; program code
-                        
-                        ; /------------------------------------------------------------------main method
-2000                    MainLoop:
-2000 cf 20 00                   lds     #STACK          ; stack location
-                                
-                                ; ** Configure Hex Displays**
-2003 16 20 1e                   jsr     Configuration
-                                
-2006                    Rollover:
-                                ; ** Set value Count from FIRST_BCD **
-2006 16 20 25                   jsr     Set_Count
-                        
-2009                    Display_Value:
-                                ; ** Extract MSB**
-2009 16 20 30                   jsr        Set_MSB
-                                
-                                ; ** Display MSB of Count on MSB Hex Display**
-200c 16 20 48                   jsr     Display
-                                
-                                ; ** Delay a few milliseconds **
-200f 16 20 2a                   jsr     Delay
-                                
-                                ; ** Extract LSB from Count **
-2012 16 20 3c                   jsr     Set_LSB
-                                
-                                ; ** Display LSB of Count on LSB Hex Display**
-2015 16 20 48                   jsr     Display
-                                
-                                ; ** Delay a few milliseconds **
-2018 16 20 2a                   jsr        Delay
-                                
-201b 20 2f                      bra     Switch_Main
-                        
-201d 3f                         swi
-                                end
-                        
-                        
-                        
-                        ; /---------------------------------------------------subroutine for main method
-201e                    Configuration:
-                                ; Config_Sws_And_Leds.asm
-                                ; Purpose: Configure the Wytec Rev F board to use LEDs mapped to PORTB and switches mapped to PORTH
-201e 16 23 00                   jsr        Config_Sws_And_Leds
-                                ; Config_Hex_Displays.asm
-                                ; Purpose: Configure the Dragon12-Plus HCS12 Trainer Rev F board to use the four HEX displays on PORTB
-2021 16 23 17                   jsr     Config_Hex_Displays ; Use the Hex Displays to display the count
-2024 3d                         rts
-                        
-2025                    Set_Count:
-2025 96 00                      ldaa    FIRST_BCD
-2027 5a 00                      STAA    Count
-2029 3d                         rts
-                        
-202a                    Delay:
-202a 96 fa                      ldaa        DVALUE
-202c 16 23 1f                   jsr     Delay_Ms
-202f 3d                         rts
-                        
-2030                    Set_MSB:
-                                ; Set Display
-2030 96 0b                      ldaa    DIGIT1_PP2
-2032 5a 01                      staa    PORTB
-2034 d6 02                      ldab    MSB_DISPLAY
-                                ; Set Value
-2036 96 00                      ldaa    Count
-2038 16 23 44                   jsr     Extract_Msb
-203b 3d                         rts
-                        
-203c                    Set_LSB:
-                                ; Set Display
-203c 96 07                      ldaa    DIGIT0_PP3
-203e 5a 01                      staa    PORTB
-2040 d6 01                      ldab    LSB_DISPLAY
-                                ; Set Value
-2042 96 00                      ldaa    Count
-2044 16 23 49                   jsr     Extract_Lsb
-2047 3d                         rts
-                        
-2048                    Display:
-2048 16 23 39                   jsr     Hex_Display
-204b 3d                         rts
-                        
-                        ; /-----------------------------------------------------------switch main method
-204c                    Switch_Main:
-204c b6 02 60                   ldaa    PTH     ; Read Status of Port H
-204f 94 fe                      anda    SW5    ; operate AND with SW5
-2051 27 09                      beq     CountUp
-                                
-2053 b6 02 60                   ldaa    PTH
-2056 94 fd                      anda    SW4    ; operate AND with SW4
-2058 27 15                      beq     CountDown
-                                
-205a 20 f0                      bra     Switch_Main     ; Infinity Loop til switch is clicked
-                        
-                        ; /-------------------------------------------------subroutine for switch method
-205c                    CountUp:
-205c 96 00                      ldaa    Count   ; Load Count to A
-205e 42                         inca            ; increment A
-                                
-205f 16 20 64                   jsr     Upward_HEX_to_BCD      ; Convert from Hex value to BCD decimal value
-                                
-2062 20 21                      bra        Check_Rollover
-                        
-2064                    Upward_HEX_to_BCD:
-2064 84 0f                      anda    #$0F    ; extract only lower value
-2066 81 0a                      cmpa    #10     ; if(A>=10)
-2068 25 1a                      blo     SkipAdjust      ; A < 10
-                                
-206a 80 0a                      suba    #10     ; A - 10
-206c 8b 10                      adda    #$10    ; MSB + 1
-206e 3d                         rts
-                        
-206f                    CountDown:
-206f 96 00                      ldaa    Count   ; Load Count to A
-2071 43                         deca            ; decrement A
-                                
-2072 91 ff                      cmpa    OUT_OF_RANGE    ; $00 - $01 = $FF (?) | if(A==$FF)
-2074 27 90                      beq     Rollover
-                                
-2076 16 20 7b                   jsr     Downward_HEX_to_BCD
-                                
-2079 20 0a                      bra     Check_Rollover
-                        
-207b                    Downward_HEX_to_BCD:
-207b 84 0f                      anda    #$0F    ; extract only lower value
-207d 81 0f                      cmpa    #$0F
-207f 26 03                      bne     SkipAdjust
-                                
-2081 80 06                      suba    #6
-2083 3d                         rts
-                                
-2084                    SkipAdjust:
-2084 3d                         rts
-                        
-2085                    Check_Rollover:
-2085 91 99                      cmpa    LAST_BCD        ; A <= 99
-2087 22 06                      bhi     Jump
-                        
-2089 5a 00                      staa    Count   ; Save adjusted value to A
-208b 18 20 ff 7a                lbra     Display_Value
-                                
-208f                    Jump:
-208f 18 20 ff 73                lbra    Rollover
-                                
-                                
-                                
-                        
-                                
+2084                    Endpoint:
+2084 3f                                 swi                             ; End program
+                                        end
 
-Executed: Fri Nov 22 02:44:11 2024
-Total cycles: 269, Total bytes: 147
+Executed: Fri Nov 22 18:07:05 2024
+Total cycles: 203, Total bytes: 133
 Total errors: 0, Total warnings: 0

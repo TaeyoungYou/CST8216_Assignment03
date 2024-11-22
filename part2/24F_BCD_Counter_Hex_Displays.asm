@@ -5,10 +5,8 @@
 ; Author:       D. Haley
 ; Date          24 May 2024
 ;
-; Modified by:  Egor Vovk               S/N: 041081020
-;               John Rycca Belcina      S/N: 041128039
-;               Taeyoung You            S/N: 041079981
-; Date:         11/16/2024
+; Modified by:  < your Student Name(s) and Number(s) go here >
+; Date:         < completion date goes here >
 ;
 ; Purpose       Up/Down Count BCD Counter $00 - $99 (BCD) using Hex Displays
 ;               and a single register, Accumulator A, for the count
@@ -72,9 +70,10 @@
 ;
 ;
 ; ***** DO NOT CHANGE ANY CODE BETWEEN THESE MARKERS *****
-; Include asm files
-#include        API_Config.asm
 
+#include        API_Config.txt
+
+; Program Constants
 STACK           equ     $2000
 
 ; Port H SWITCHES
@@ -90,7 +89,6 @@ OUT_OF_RANGE    equ     $FF     ; Out of range value when down counting
 
 ; ***** END OF DO NOT CHANGE ANY CODE BETWEEN THESE MARKERS *****
 
-; /-------------------------------------------initialize constants and variables
 ; Delay Subroutine Values
 ; Could also be termed Switch Debounce value, as the switches MUST be debounced
 DVALUE  equ     250                    ; Delay value (base 10) 0 - 255 ms
@@ -99,160 +97,90 @@ DVALUE  equ     250                    ; Delay value (base 10) 0 - 255 ms
 ; Changing these values will change the Starting and Ending BCD counts
 FIRST_BCD       equ     $00     ; Starting BCD count ( < LAST_BCD )
 LAST_BCD        equ     $99     ; Ending BCD count   ( > FIRST_BCD )
+                org         $1000
+COUNT           ds          2
+                org         $2000               ; Program start location
+Start:
+                lds         #STACK              ; Initialize stack
+                jsr         Config_HEX_Displays ; Configure Hex Displays
+CheckpointC:
+                ldaa        #FIRST_BCD          ; Load initial BCD value
+                staa        COUNT               ; Initialize COUNT
+                bra         CheckpointB         ; Start main loop
+CheckpointB:
+                ldaa        COUNT               ; Load COUNT
+                psha
+                jsr         Extract_MSB         ; Extract MSB
+                ldab        #DIGIT1_PP2         ; Select MSB display
+                jsr         Hex_Display         ; Display MSB
+                ldaa        #DVALUE
+                jsr         Delay_Ms            ; Delay
+                
+                ldaa        COUNT               ; Reload COUNT
+                jsr         Extract_LSB         ; Extract LSB
+                ldab        #DIGIT0_PP3         ; Select LSB display
+                jsr         Hex_Display         ; Display LSB
+                ldaa        #DVALUE
+                jsr         Delay_Ms            ; Delay
+                bra         CheckpointA         ; Check switch status
+CheckpointA:
+                ldaa        PTH                 ; Read Port H
+                ; Check if SW5 is pressed (only bit 0)
+                anda        #%00000001          ; Isolate bit 0 (SW5)
+                beq         CheckpointF         ; Branch to increment if SW5 is pressed
+                ; Check if SW4 is pressed (only bit 1)
+                ldaa        PTH                 ; Reload Port H to avoid incorrect masking
+                anda        #%00000010          ; Isolate bit 1 (SW4)
+                beq         CheckpointD         ; Branch to decrement if SW4 is pressed
+                bra         CheckpointA         ; Handle abnormal conditions if neither is pressed
 
-; Display Value
-LSB_DISPLAY        equ     $01
-MSB_DISPLAY        equ     $02
+CheckpointF:
+                pula
+                inca                            ; Increment COUNT
+                psha
+                anda        #%00001111          ; Isolate LSB
+                cmpa        #%00001010          ; Check if invalid (>= 10)
+                blo         ValidIncrement      ; If valid, branch
+InvalidIncrement:
+                pula
+                anda        #%11110000
+                adda        #$10
+                staa        COUNT
+                bra         CheckpointG_Increment
+ValidIncrement:
+                pula
+                staa        COUNT              		  ; Store updated COUNT
+                bra         CheckpointG_Increment         ; Validate COUNT
+CheckpointD:
+                pula
+                deca
+                cmpa        #%11111111
+                beq         OutOfRange
+                
+		psha
+                anda        #%00001111          ; Isolate LSB
+                cmpa        #%00001010          ; Check if invalid (F)
+                blo         ValidDecrement      ; If valid, branch
+InvalidDecrement:
+                pula
+                suba        #$06
+                staa        COUNT
+                bra         CheckpointB
+ValidDecrement:
+                pula
+                staa        COUNT              	       	  ; Store updated COUNT
+                bra         CheckpointB		          ; Validate COUNT
+OutOfRange:
+                ldaa        #LAST_BCD
+                staa        COUNT
+                bra         CheckpointB
+                
+CheckpointG_Increment:
+                ldaa        COUNT               ; Load COUNT
+                cmpa        #LAST_BCD           ; Compare with LAST_BCD
+                bls         CheckpointB         ; If <= LAST_BCD, loop to display
+                bra         CheckpointC         ; Loop to display
 
-; Variable for Count
-Count           ds      2
-
-        org     $2000           ; program code
-
-; /------------------------------------------------------------------main method
-MainLoop:
-        lds     #STACK          ; stack location
-        
-        ; ** Configure Hex Displays**
-        jsr     Configuration
-        
-Rollover:
-        ; ** Set value Count from FIRST_BCD **
-        jsr     Set_Count
-
-Display_Value:
-        ; ** Extract MSB**
-        jsr        Set_MSB
-        
-        ; ** Display MSB of Count on MSB Hex Display**
-        jsr     Display
-        
-        ; ** Delay a few milliseconds **
-        jsr     Delay
-        
-        ; ** Extract LSB from Count **
-        jsr     Set_LSB
-        
-        ; ** Display LSB of Count on LSB Hex Display**
-        jsr     Display
-        
-        ; ** Delay a few milliseconds **
-        jsr        Delay
-        
-        bra     Switch_Main
-
-        swi
-        end
-
-
-
-; /---------------------------------------------------subroutine for main method
-Configuration:
-        ; Config_Sws_And_Leds.asm
-        ; Purpose: Configure the Wytec Rev F board to use LEDs mapped to PORTB and switches mapped to PORTH
-        jsr        Config_Sws_And_Leds
-        ; Config_Hex_Displays.asm
-        ; Purpose: Configure the Dragon12-Plus HCS12 Trainer Rev F board to use the four HEX displays on PORTB
-        jsr     Config_Hex_Displays ; Use the Hex Displays to display the count
-        rts
-
-Set_Count:
-        ldaa    FIRST_BCD
-        STAA    Count
-        rts
-
-Delay:
-        ldaa        DVALUE
-        jsr     Delay_Ms
-        rts
-
-Set_MSB:
-        ; Set Display
-        ldaa    DIGIT1_PP2
-        staa    PORTB
-        ldab    MSB_DISPLAY
-        ; Set Value
-        ldaa    Count
-        jsr     Extract_Msb
-        rts
-
-Set_LSB:
-        ; Set Display
-        ldaa    DIGIT0_PP3
-        staa    PORTB
-        ldab    LSB_DISPLAY
-        ; Set Value
-        ldaa    Count
-        jsr     Extract_Lsb
-        rts
-
-Display:
-        jsr     Hex_Display
-        rts
-
-; /-----------------------------------------------------------switch main method
-Switch_Main:
-        ldaa    PTH     ; Read Status of Port H
-        anda    SW5    ; operate AND with SW5
-        beq     CountUp
-        
-        ldaa    PTH
-        anda    SW4    ; operate AND with SW4
-        beq     CountDown
-        
-        bra     Switch_Main     ; Infinity Loop til switch is clicked
-
-; /-------------------------------------------------subroutine for switch method
-CountUp:
-        ldaa    Count   ; Load Count to A
-        inca            ; increment A
-        
-        jsr     Upward_HEX_to_BCD      ; Convert from Hex value to BCD decimal value
-        
-        bra        Check_Rollover
-
-Upward_HEX_to_BCD:
-        anda    #$0F    ; extract only lower value
-        cmpa    #10     ; if(A>=10)
-        blo     SkipAdjust      ; A < 10
-        
-        suba    #10     ; A - 10
-        adda    #$10    ; MSB + 1
-        rts
-
-CountDown:
-        ldaa    Count   ; Load Count to A
-        deca            ; decrement A
-        
-        cmpa    OUT_OF_RANGE    ; $00 - $01 = $FF (?) | if(A==$FF)
-        beq     Rollover
-        
-        jsr     Downward_HEX_to_BCD
-        
-        bra     Check_Rollover
-
-Downward_HEX_to_BCD:
-        anda    #$0F    ; extract only lower value
-        cmpa    #$0F
-        bne     SkipAdjust
-        
-        suba    #6
-        rts
-        
-SkipAdjust:
-        rts
-
-Check_Rollover:
-        cmpa    LAST_BCD        ; A <= 99
-        bhi     Jump
-
-        staa    Count   ; Save adjusted value to A
-        lbra     Display_Value
-        
-Jump:
-        lbra    Rollover
-        
-        
-        
-
-        
+Endpoint:
+                swi                             ; End program
+                end

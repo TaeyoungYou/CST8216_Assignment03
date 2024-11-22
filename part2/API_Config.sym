@@ -1,6 +1,0 @@
-config_hex_displays 2317
-config_sws_and_leds 2300
-delay_ms   231f
-extract_lsb 2349
-extract_msb 2344
-hex_display 2339
