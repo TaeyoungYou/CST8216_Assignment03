@@ -1,0 +1,8 @@
+array_loop 0004
+character_to_remove 0000
+conver_loop 000c
+conversion_factor 0030
+ean_string_conversion 0002
+index      0001
+number_of_characters_in_ean 0011
+skip       0017
