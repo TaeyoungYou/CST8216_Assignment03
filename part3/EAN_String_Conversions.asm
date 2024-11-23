@@ -3,9 +3,9 @@
 ; Author:       D. Haley, Professor
 ; Date:         1 Aug 2024: ISBN-13 (EAN)
 ;
-; Modified by:  Egor Vovk               S/N: 041081020
-;               John Rycca Belcina      S/N: 041128039
-;               Taeyoung You            S/N: 041079981
+; Modified by:  Egor Vovk     S/N: 041081020
+;               John Rycca Belcina   S/N: 041128039
+;               Taeyoung You    S/N: 041079981
 ; Date:         11/16/2024
 ;
 ; Notes:         1. Only students identified in the above header
@@ -24,7 +24,7 @@
 ;               Example: Source Array has 17 elements with the "978-" and
 ;               13 elements other elements, which contain 3 specific characters
 ;               to find and skip. Destination Array will contain only
-;               10 elements.
+;               10 el1ements.
 ;
 ; Preconditions: (EAN_String_Conversion_Driver.asm sets up these Preconditions)
 ;               X points to first element of Source Array
@@ -41,8 +41,14 @@
 ; Algorithm:
 ;               Save Character to be Removed (passed in B) to memory
 ;               Take Length of the Source Array and divide it by the number
-;                   of array elements. This will provide an Outer Loop Counter
+;                   of array elements.
+		;This will provide an Outer Loop Counter
+
+
+
 ;               Create a Inner Loop Counter Set to Number of Characters in EAN
+
+
 ;               For Outer Loop Counter value downto 0
 ;                   Skip "987-"
 ;                   For Inner Loop Counter= Number of Characters in EAN downto 0
@@ -66,46 +72,48 @@ CONVERSION_FACTOR               equ     $30   ; ASCII to Digit Conversion Factor
 Number_of_Characters_in_EAN     equ     17    ; Each EAN has 17 characters
 Character_To_Remove             ds      1     ; Character to be Removed
 
-index   ds      1
-
 EAN_String_Conversion:
+        stab    Character_To_Remove     ; Save the character to be removed into memory
 
-        stab    Character_To_Remove     ; Save skipped character
+Outer_Loop:
+        cmpa    #0                      ; Check if the outer loop is complete
+        beq     Return_From_Function    ; Exit if no more EANs to process
 
-Array_Loop:
-        psha                    	; save A in stack
-        clr     index                   ; index = 0
-        
-        inx     ; 9
-        inx     ; 7
-        inx     ; 8
-        inx     ; -
+        ldab    #13                     ; Set inner loop counter to 13 (remaining characters)
 
+        ; Skip the first 4 characters ("978-")
+        leax    4,X                     ; Advance X by 4 to skip the prefix
 
-Conver_Loop:
+Inner_Loop:
+        cmpb    #0                      ; Check if the inner loop is complete
+        beq     Outer_Loop_Decrement    ; If complete, exit to decrement outer loop
 
-        ldaa    index,x             	; Load character
-        cmpa    Character_To_Remove     ; compare with -
-        beq     Skip
-        
-        suba    CONVERSION_FACTOR       ; Convert ASCII to digit
-        staa    0,y                     ; save character
-        iny
+        ; Load current character from the source array
+        ldaa    0,X                     ; Load the current character
 
-Skip:
-        inc     index
-        cpx	Number_of_Characters_in_EAN
-        bne     Conver_Loop
-        
-        pula
-        suba    Number_of_Characters_in_EAN
-        cmpa    #0
-        bne     Array_Loop
-        
-        rts
-        
-        
-        
-        
-        
-        
+        ; Check for characters to skip: ASCII_HYPHEN ('-') or specific removal character
+        cmpa    #'-'                    ; Compare with '-'
+        beq     Skip_Character          ; Skip if it matches
+        cmpa    Character_To_Remove     ; Compare with the specific character to remove
+        beq     Skip_Character          ; Skip if it matches
+
+        ; Convert valid ASCII character to numeric digit
+        suba    #CONVERSION_FACTOR      ; Convert ASCII character to numeric digit
+
+        ; Store the converted digit in the destination array
+        staa    0,Y                     ; Store the value at the destination pointer
+        iny                             ; Increment destination pointer (Y)
+
+Skip_Character:
+        inx                             ; Increment source pointer (X) to the next character
+        decb                            ; Decrement the inner loop counter (B)
+        bra     Inner_Loop              ; Repeat the inner loop
+
+Outer_Loop_Decrement:
+        leax    13,X                    ; Adjust X to move past the processed characters
+        leax    4,X                     ; Move X to skip the next EAN prefix ("978-")
+        deca                            ; Decrement the outer loop counter (A)
+        bra     Outer_Loop              ; Repeat the outer loop
+
+Return_From_Function:
+        rts                             ; Return from the subroutine

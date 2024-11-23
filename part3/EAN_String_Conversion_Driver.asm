@@ -1,10 +1,9 @@
 ; EAN_String_Conversion_Driver.asm
 ;
 ; Author:               D. Haley
-; Modified by:  	Egor Vovk               S/N: 041081020
-;               	John Rycca Belcina      S/N: 041128039
-;               	Taeyoung You            S/N: 041079981
-; Date:         	11/16/2024
+; Student Number:       Faculty
+; Course:               CST8216 Processor Architecture
+; Date:                 1 Aug 2024
 ;
 ; Purpose:              Driver program to convert 17 character EANs to
 ;                       a 10 Digit ISBN using a subroutine that skips the EAN's
@@ -63,5 +62,5 @@ Filler  db      $0A,$0A,$0A,$0A                 ; Filler bytes so we can observe
                                                 ; Destination Array will be
                                                 ; filled with ISBN Digits
         swi
-#include EAN_String_Conversion.asm              ; Subroutine to be completed
+#include EAN_String_Conversions.asm              ; Subroutine to be completed
         end

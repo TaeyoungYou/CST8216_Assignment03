@@ -1,0 +1,19 @@
+ascii_hyphen 002d
+character_to_remove 2011
+conversion_factor 0030
+ean_length 0011
+ean_string_conversion 2012
+eans       1000
+end_ascii_ean 1066
+end_numeric_isbn 10ac
+filler     10ac
+inner_loop 201d
+isbn_length 000a
+number_of_characters_in_ean 0011
+number_of_eans 0006
+outer_loop 2015
+outer_loop_decrement 2035
+return_from_function 203c
+skip_character 2031
+start_ascii_ean 1000
+start_numeric_isbn 1070

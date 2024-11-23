@@ -6,9 +6,9 @@ as12, an absolute assembler for Motorola MCU's, version 1.2h
                         ; Author:       D. Haley, Professor
                         ; Date:         1 Aug 2024: ISBN-13 (EAN)
                         ;
-                        ; Modified by:  Egor Vovk               S/N: 041081020
-                        ;               John Rycca Belcina      S/N: 041128039
-                        ;               Taeyoung You            S/N: 041079981
+                        ; Modified by:  Egor Vovk     S/N: 041081020
+                        ;               John Rycca Belcina   S/N: 041128039
+                        ;               Taeyoung You    S/N: 041079981
                         ; Date:         11/16/2024
                         ;
                         ; Notes:         1. Only students identified in the above header
@@ -27,7 +27,7 @@ as12, an absolute assembler for Motorola MCU's, version 1.2h
                         ;               Example: Source Array has 17 elements with the "978-" and
                         ;               13 elements other elements, which contain 3 specific characters
                         ;               to find and skip. Destination Array will contain only
-                        ;               10 elements.
+                        ;               10 el1ements.
                         ;
                         ; Preconditions: (EAN_String_Conversion_Driver.asm sets up these Preconditions)
                         ;               X points to first element of Source Array
@@ -44,8 +44,14 @@ as12, an absolute assembler for Motorola MCU's, version 1.2h
                         ; Algorithm:
                         ;               Save Character to be Removed (passed in B) to memory
                         ;               Take Length of the Source Array and divide it by the number
-                        ;                   of array elements. This will provide an Outer Loop Counter
+                        ;                   of array elements.
+                        		;This will provide an Outer Loop Counter
+                        
+                        
+                        
                         ;               Create a Inner Loop Counter Set to Number of Characters in EAN
+                        
+                        
                         ;               For Outer Loop Counter value downto 0
                         ;                   Skip "987-"
                         ;                   For Inner Loop Counter= Number of Characters in EAN downto 0
@@ -69,50 +75,52 @@ as12, an absolute assembler for Motorola MCU's, version 1.2h
 0011                    Number_of_Characters_in_EAN     equ     17    ; Each EAN has 17 characters
 0000                    Character_To_Remove             ds      1     ; Character to be Removed
                         
-0001                    index   ds      1
+0001                    EAN_String_Conversion:
+0001 5b 00                      stab    Character_To_Remove     ; Save the character to be removed into memory
                         
-0002                    EAN_String_Conversion:
+0003                    Outer_Loop:
+0003 81 00                      cmpa    #0                      ; Check if the outer loop is complete
+0005 27 22                      beq     Return_From_Function    ; Exit if no more EANs to process
                         
-0002 5b 00                      stab    Character_To_Remove     ; Save skipped character
+0007 c6 0d                      ldab    #13                     ; Set inner loop counter to 13 (remaining characters)
                         
-0004                    Array_Loop:
-0004 36                         psha                    	; save A in stack
-0005 79 00 01                   clr     index                   ; index = 0
-                                
-0008 08                         inx     ; 9
-0009 08                         inx     ; 7
-000a 08                         inx     ; 8
-000b 08                         inx     ; -
+                                ; Skip the first 4 characters ("978-")
+0009 1a 04                      leax    4,X                     ; Advance X by 4 to skip the prefix
                         
+000b                    Inner_Loop:
+000b c1 00                      cmpb    #0                      ; Check if the inner loop is complete
+000d 27 13                      beq     Outer_Loop_Decrement    ; If complete, exit to decrement outer loop
                         
-000c                    Conver_Loop:
+                                ; Load current character from the source array
+000f a6 00                      ldaa    0,X                     ; Load the current character
                         
-000c a6 01                      ldaa    index,x             	; Load character
-000e 91 00                      cmpa    Character_To_Remove     ; compare with -
-0010 27 05                      beq     Skip
-                                
-0012 90 30                      suba    CONVERSION_FACTOR       ; Convert ASCII to digit
-0014 6a 40                      staa    0,y                     ; save character
-0016 02                         iny
+                                ; Check for characters to skip: ASCII_HYPHEN ('-') or specific removal character
+0011 81 2d                      cmpa    #'-'                    ; Compare with '-'
+0013 27 09                      beq     Skip_Character          ; Skip if it matches
+0015 91 00                      cmpa    Character_To_Remove     ; Compare with the specific character to remove
+0017 27 05                      beq     Skip_Character          ; Skip if it matches
                         
-0017                    Skip:
-0017 72 00 01                   inc     index
-001a 9e 11                      cpx	Number_of_Characters_in_EAN
-001c 26 ee                      bne     Conver_Loop
-                                
-001e 32                         pula
-001f 90 11                      suba    Number_of_Characters_in_EAN
-0021 81 00                      cmpa    #0
-0023 26 df                      bne     Array_Loop
-                                
-0025 3d                         rts
-                                
-                                
-                                
-                                
-                                
-                                
+                                ; Convert valid ASCII character to numeric digit
+0019 80 30                      suba    #CONVERSION_FACTOR      ; Convert ASCII character to numeric digit
+                        
+                                ; Store the converted digit in the destination array
+001b 6a 40                      staa    0,Y                     ; Store the value at the destination pointer
+001d 02                         iny                             ; Increment destination pointer (Y)
+                        
+001e                    Skip_Character:
+001e 08                         inx                             ; Increment source pointer (X) to the next character
+001f 53                         decb                            ; Decrement the inner loop counter (B)
+0020 20 e9                      bra     Inner_Loop              ; Repeat the inner loop
+                        
+0022                    Outer_Loop_Decrement:
+0022 1a 0d                      leax    13,X                    ; Adjust X to move past the processed characters
+0024 1a 04                      leax    4,X                     ; Move X to skip the next EAN prefix ("978-")
+0026 43                         deca                            ; Decrement the outer loop counter (A)
+0027 20 da                      bra     Outer_Loop              ; Repeat the outer loop
+                        
+0029                    Return_From_Function:
+0029 3d                         rts                             ; Return from the subroutine
 
-Executed: Fri Nov 22 04:33:51 2024
-Total cycles: 49, Total bytes: 36
+Executed: Sat Nov 23 00:23:42 2024
+Total cycles: 49, Total bytes: 41
 Total errors: 0, Total warnings: 0
