@@ -910,6 +910,6 @@ eeb2                    WriteMem equ    $EEB2   ; FAR call
                         
                                 
 
-Executed: Fri Nov 22 02:44:11 2024
+Executed: Fri Nov 22 12:37:12 2024
 Total cycles: 269, Total bytes: 147
 Total errors: 0, Total warnings: 0
