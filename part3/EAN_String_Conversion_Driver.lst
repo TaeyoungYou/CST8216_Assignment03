@@ -1,0 +1,213 @@
+
+as12, an absolute assembler for Motorola MCU's, version 1.2h
+
+                        ; EAN_String_Conversion_Driver.asm
+                        ;
+                        ; Author:               D. Haley
+                        ; Student Number:       Faculty
+                        ; Course:               CST8216 Processor Architecture
+                        ; Date:                 1 Aug 2024
+                        ;
+                        ; Purpose:              Driver program to convert 17 character EANs to
+                        ;                       a 10 Digit ISBN using a subroutine that skips the EAN's
+                        ;                       "978-" characters and any Hyphens ('-') within the
+                        ;                       EAN and converts the remaining ASCII values to Digits.
+                        ;
+                        ; Note:                 EAN stands for European Article Numbering, also referred
+                        ;                       to as EAN-13 (used in supermarkets)or ISBN-13 (used by
+                        ;                       textbook publishers).
+                        ;
+                        ;                       The subroutine you write will convert 17 character
+                        ;                       ISBN-13 Dual strings to 10 digit ISBN-10 values
+                        ;                       by stripping off (removing) "978-" and any Hyphens "-"
+                        ;                       from the string and converting the remaining characters
+                        ;                       to numeric digits.
+                        ;
+                        ; Sources:              https://www.activebarcode.com/codes/isbn13dual
+                        ;                       https://www.activebarcode.com/codes/isbn10
+                        ;
+                        ;
+                        ; Example:              ASCII format of EAN  -> 978-0-684-84438-5
+                        ;                       Digit format of ISBN -> 0684844385
+                        ;
+                        ; Program Constants
+0011                    EAN_LENGTH      equ     17        ; Each ASCII EAN has 17 ASCII characters
+000a                    ISBN_LENGTH     equ     10        ; Each numeric ISBN has 10 digits
+0006                    NUMBER_OF_EANs  equ     06        ; Total of six EANs to Validate
+002d                    ASCII_HYPHEN    equ     '-'       ; Hyphen to be removed from ASCII EAN
+                        
+1000                            org        $1000
+1000                    Start_ASCII_EAN
+                        #include EAN_Lab_Section_312.txt
+                        ;EANs	fcc	"978-9971-6-0128-0"	
+1000 39 37 38 2d 39 39  	fcc	"978-9971-6-0138-0"	
+     37 31 2d 36 2d 30
+     31 33 38 2d 30
+1011 39 37 38 2d 39 39  	fcc	"978-9971-5-0210-0"	
+     37 31 2d 35 2d 30
+     32 31 30 2d 30
+1022 39 37 38 2d 39 38  	fcc	"978-9871-6-0128-1"	
+     37 31 2d 36 2d 30
+     31 32 38 2d 31
+1033 39 37 38 2d 36 32  	fcc	"978-62821-43-11-1"	
+     38 32 31 2d 34 33
+     2d 31 31 2d 31
+1044 39 37 38 2d 31 30  	fcc	"978-106-425-069-3"	
+     36 2d 34 32 35 2d
+     30 36 39 2d 33
+                        	
+                        
+                        #endinclude
+
+1055                    End_ASCII_EAN
+                        
+1070                            org        $1070          ; Aligns Values in Simulator Address Window
+1070                    Start_Numeric_ISBN
+1070                            ds        ISBN_lENGTH*NUMBER_OF_EANs    ; This array should not be the
+10ac                    End_Numeric_ISBN                                ; same size as the original one
+                                                                        ; because we skip over
+                                                                        ; EAN's "978-" and remove
+                                                                        ; the Hyphens ('-')
+10ac 0a 0a 0a 0a        Filler  db      $0A,$0A,$0A,$0A                 ; Filler bytes so we can observe
+                                                                        ; that the destination ISBN
+                                                                        ; array is the correct size.
+2000                            org     $2000
+2000 cf 20 00                   lds     #$2000
+2003 ce 10 00                   ldx     #Start_ASCII_EAN                ; Pointer to Source Array
+2006 cd 10 70                   ldy     #Start_Numeric_ISBN             ; Pointer to Destination Array
+2009 86 66                      ldaa    #EAN_LENGTH*NUMBER_OF_EANS      ; Number of ASCII EAN Characters
+                                                                        ; to process
+200b c6 2d                      ldab    #ASCII_HYPHEN                   ; Character to Remove from EANs
+                        
+200d 16 20 12                   jsr     EAN_String_Conversion           ; Subroutine to strip "978-" and
+                                                                        ; Hyphens '-' from ASCII EAN and
+                                                                        ; convert ASCII values to Digits
+                                                                        ; Destination Array will be
+                                                                        ; filled with ISBN Digits
+2010 3f                         swi
+                        #include EAN_String_Conversions.asm              ; Subroutine to be completed
+                        ; EAN_String_Conversion.asm
+                        ;
+                        ; Author:       D. Haley, Professor
+                        ; Date:         1 Aug 2024: ISBN-13 (EAN)
+                        ;
+                        ; Modified by:                      <== Your name(s) goes here
+                        ; Student Number:                   <== Your student number(s) goes here.
+                        ; Modification Date:                <== Your submission date goes here.
+                        ;
+                        ; Notes:         1. Only students identified in the above header
+                        ;                   * at the time of submission * are eligible for marks
+                        ;                   for this portion of the assignment.
+                        ;                2. ALL students must be from the SAME lab section. No exceptions
+                        ;
+                        ; Purpose:      A subroutine that will traverse through a Source Array
+                        ;               and copy its contents to a Destination Array except for
+                        ;               the first 4 characters of the EAN ("978-") and a
+                        ;               a provided specific character. Note that the length of the
+                        ;               Destination Array will be shortened by 4 with the removal of
+                        ;               "978-" and shortened by 1 for each other character that is
+                        ;               skipped over and not copied to it.
+                        ;
+                        ;               Example: Source Array has 17 elements with the "978-" and
+                        ;               13 elements other elements, which contain 3 specific characters
+                        ;               to find and skip. Destination Array will contain only
+                        ;               10 el1ements.
+                        ;
+                        ; Preconditions: (EAN_String_Conversion_Driver.asm sets up these Preconditions)
+                        ;               X points to first element of Source Array
+                        ;               Y points to first element of Destination array
+                        ;               A contains the Length of the Source Array
+                        ;               B contains the Character to be removed from Source Array
+                        ;
+                        ; Postconditions:
+                        ;               X, Y, A and B are destroyed
+                        ;               Source Array left unchanged
+                        ;               Destination Array contains all elements of Source Array
+                        ;               except for the "978-" and the other characters skipped over
+                        ;
+                        ; Algorithm:
+                        ;               Save Character to be Removed (passed in B) to memory
+                        ;               Take Length of the Source Array and divide it by the number
+                        ;                   of array elements.
+                        		;This will provide an Outer Loop Counter
+                        		
+                        		
+                        		
+                        ;               Create a Inner Loop Counter Set to Number of Characters in EAN
+                        
+                        
+                        ;               For Outer Loop Counter value downto 0
+                        ;                   Skip "987-"
+                        ;                   For Inner Loop Counter= Number of Characters in EAN downto 0
+                        ;                       Get a Value from Source Array
+                        ;                        Increment Source Array Pointer
+                        ;                       Decrement Inner Loop_Counter
+                        ;                       if  (Value != Character to be Removed)
+                        ;                       {
+                        ;                           Convert Value from Source Array from ASCII to Digit
+                        ;                           Store Converted Value to Destination Array and
+                        ;                           increment Destination Array Pointer
+                        ;                       }
+                        ;                   If Inner Loop Counter !=0, Execute Inner Loop code again
+                        ;               Decrement Outer Loop Counter
+                        ;               If Outer Loop Counter !=0, Execute Outer Loop code again
+                        ;               return
+                        ;
+                        ; Use:          jsr EAN_String_Conversion
+                        
+0030                    CONVERSION_FACTOR               equ     $30   ; ASCII to Digit Conversion Factor
+0011                    Number_of_Characters_in_EAN     equ     17    ; Each EAN has 17 characters
+2011                    Character_To_Remove             ds      1     ; Character to be Removed
+                        
+2012                    EAN_String_Conversion:
+2012 7b 20 11                   stab    Character_To_Remove     ; Save the character to be removed into memory
+                        
+2015                    Outer_Loop:
+2015 81 00                      cmpa    #0                      ; Check if the outer loop is complete
+2017 27 23                      beq     Return_From_Function    ; Exit if no more EANs to process
+                        
+2019 c6 0d                      ldab    #13                     ; Set inner loop counter to 13 (remaining characters)
+                        
+                                ; Skip the first 4 characters ("978-")
+201b 1a 04                      leax    4,X                     ; Advance X by 4 to skip the prefix
+                        
+201d                    Inner_Loop:
+201d c1 00                      cmpb    #0                      ; Check if the inner loop is complete
+201f 27 14                      beq     Outer_Loop_Decrement    ; If complete, exit to decrement outer loop
+                        
+                                ; Load current character from the source array
+2021 a6 00                      ldaa    0,X                     ; Load the current character
+                        
+                                ; Check for characters to skip: ASCII_HYPHEN ('-') or specific removal character
+2023 81 2d                      cmpa    #'-'                    ; Compare with '-'
+2025 27 0a                      beq     Skip_Character          ; Skip if it matches
+2027 b1 20 11                   cmpa    Character_To_Remove     ; Compare with the specific character to remove
+202a 27 05                      beq     Skip_Character          ; Skip if it matches
+                        
+                                ; Convert valid ASCII character to numeric digit
+202c 80 30                      suba    #CONVERSION_FACTOR      ; Convert ASCII character to numeric digit
+                        
+                                ; Store the converted digit in the destination array
+202e 6a 40                      staa    0,Y                     ; Store the value at the destination pointer
+2030 02                         iny                             ; Increment destination pointer (Y)
+                        
+2031                    Skip_Character:
+2031 08                         inx                             ; Increment source pointer (X) to the next character
+2032 53                         decb                            ; Decrement the inner loop counter (B)
+2033 20 e8                      bra     Inner_Loop              ; Repeat the inner loop
+                        
+2035                    Outer_Loop_Decrement:
+2035 1a 0d                      leax    13,X                    ; Adjust X to move past the processed characters
+2037 1a 04                      leax    4,X                     ; Move X to skip the next EAN prefix ("978-")
+2039 43                         deca                            ; Decrement the outer loop counter (A)
+203a 20 d9                      bra     Outer_Loop              ; Repeat the outer loop
+                        
+203c                    Return_From_Function:
+203c 3d                         rts                             ; Return from the subroutine
+                        #endinclude
+
+                                end
+
+Executed: Sat Nov 23 18:55:10 2024
+Total cycles: 81, Total bytes: 149
+Total errors: 0, Total warnings: 0
