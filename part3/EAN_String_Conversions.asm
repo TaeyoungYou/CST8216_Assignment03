@@ -3,9 +3,10 @@
 ; Author:       D. Haley, Professor
 ; Date:         1 Aug 2024: ISBN-13 (EAN)
 ;
-; Modified by:                      <== Your name(s) goes here
-; Student Number:                   <== Your student number(s) goes here.
-; Modification Date:                <== Your submission date goes here.
+; Modified by:  Taeyoung You    	| 041079981
+;               Egor Vovk       	| 041081020
+;               John Rycca Belcina      | 041128039
+; Date:         2024.11.23.
 ;
 ; Notes:         1. Only students identified in the above header
 ;                   * at the time of submission * are eligible for marks
@@ -41,10 +42,10 @@
 ;               Save Character to be Removed (passed in B) to memory
 ;               Take Length of the Source Array and divide it by the number
 ;                   of array elements.
-		;This will provide an Outer Loop Counter
-		
-		
-		
+                ;This will provide an Outer Loop Counter
+                
+                
+                
 ;               Create a Inner Loop Counter Set to Number of Characters in EAN
 
 

@@ -5,8 +5,10 @@
 ; Author:       D. Haley
 ; Date          24 May 2024
 ;
-; Modified by:  < your Student Name(s) and Number(s) go here >
-; Date:         < completion date goes here >
+; Modified by:  Taeyoung You    	| 041079981
+;               Egor Vovk       	| 041081020
+;               John Rycca Belcina      | 041128039
+; Date:         2024.11.23.
 ;
 ; Purpose       Up/Down Count BCD Counter $00 - $99 (BCD) using Hex Displays
 ;               and a single register, Accumulator A, for the count
@@ -149,7 +151,7 @@ InvalidIncrement:
                 bra         CheckpointG_Increment
 ValidIncrement:
                 pula
-                staa        COUNT              		  ; Store updated COUNT
+                staa        COUNT                                ; Store updated COUNT
                 bra         CheckpointG_Increment         ; Validate COUNT
 CheckpointD:
                 pula
@@ -157,7 +159,7 @@ CheckpointD:
                 cmpa        #%11111111
                 beq         OutOfRange
                 
-		psha
+                psha
                 anda        #%00001111          ; Isolate LSB
                 cmpa        #%00001010          ; Check if invalid (F)
                 blo         ValidDecrement      ; If valid, branch
@@ -168,8 +170,8 @@ InvalidDecrement:
                 bra         CheckpointB
 ValidDecrement:
                 pula
-                staa        COUNT              	       	  ; Store updated COUNT
-                bra         CheckpointB		          ; Validate COUNT
+                staa        COUNT                                       ; Store updated COUNT
+                bra         CheckpointB                          ; Validate COUNT
 OutOfRange:
                 ldaa        #LAST_BCD
                 staa        COUNT
